@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Wifi Disable Timer</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="wifi_enabled">Wifi Enabled</string>
+    <string name="wifi_disabled">Wifi Disabled</string>
+    <string name="disable_time_string">Disable wifi for x hours, y minutes, and z seconds</string>
+    <string name="minutes">Minutes</string>
+    <string name="hours">Hours</string>
+    <string name="seconds">Seconds</string>
+</resources>

@@ -1,27 +1,29 @@
 package com.sample.mkim.wifidisabletimer;
 
+import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
-import android.os.Handler;
-import android.support.v7.app.ActionBarActivity;
+import android.os.Build;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.os.SystemClock;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ToggleButton;
 
-import java.util.Timer;
-import java.util.TimerTask;
 
 
-
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends Activity implements View.OnClickListener {
 
     private ToggleButton disableToggle;
-    private long timeInterval = 0l;
-    private Timer timer;
-    final Handler myHandler = new Handler();
+    private WifiManager wifi;
+    private PendingIntent pi;
+    private BroadcastReceiver br;
+    private AlarmManager am;
 
 
     @Override
@@ -29,85 +31,99 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         disableToggle = (ToggleButton)findViewById(R.id.toggleButton);
-        timer = new Timer(true);
+        setup();
+        disableToggle.setOnClickListener(this);
     }
 
+    private void setup() {
+        wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+        br = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent i) {
+                turnWifiOn();
+            }
+        };
+        registerReceiver(br, new IntentFilter("com.GCRD.wifidisabletimer"));
+        pi = PendingIntent.getBroadcast( this, 0, new Intent("com.GCRD.wifidisabletimer"),
+                0 );
+        am = (AlarmManager)(this.getSystemService( Context.ALARM_SERVICE ));
+
+        disableToggle.setOnClickListener(MainActivity.this);
+    }
 
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-
-
-
-
-    private void updateGUI() {
-        myHandler.post(myRunnable);
-    }
-
-    final Runnable myRunnable = new Runnable() {
-        public void run() {
+    protected void onResume() {
+       //set the state of the UI to reflect the real world
+        if (wifi.getWifiState() == WifiManager.WIFI_STATE_DISABLED) {
+            disableToggle.setChecked(true);
+        } else {
             disableToggle.setChecked(false);
         }
-    };
+        super.onResume();
+    }
+
+    @Override
+     protected void onDestroy() {
+        am.cancel(pi);
+        unregisterReceiver(br);
+        super.onDestroy();
+    }
 
 
+    private void turnWifiOn() {
+        //reset the state of the button
+        disableToggle.setChecked(false);
 
-    public void onToggleClicked(View view) {
-        // Is the toggle on?
-        boolean off = !((ToggleButton) view).isChecked();
+        //turn on wifi
+
+        wifi.setWifiEnabled(true);
+
+        //clean up alarm tasks
+        am.cancel(pi);
+    }
+
+    private void turnWifiOff() {
+        //set the state of the button
+        disableToggle.setChecked(true);
+
+        //disable the wifi
+        WifiManager wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+        wifi.setWifiEnabled(false);
+
+    }
+
+
+    @Override
+    public void onClick(View view) {
+        System.out.println("ONCLICK TRIGGERED!!!");
+
+        // was the toggle off before the press?
+        boolean off = ((ToggleButton) view).isChecked();
 
         if (off) {
-            // reenable wifi
-            WifiManager wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
-            wifi.setWifiEnabled(true);
-            timer.cancel();
-            timer = null;
-            disableToggle.setChecked(false);
-        } else {
-            // Disable wifi for period of time
+            turnWifiOff();
+            //calculate period to suspend wifi
+            long timeInterval = 0l;
             timeInterval += Long.parseLong(((EditText)findViewById(R.id.hoursField)).getText().toString())*(3600000l);
             timeInterval += Long.parseLong(((EditText)findViewById(R.id.minutesField)).getText().toString())*(60000l);
             timeInterval += Long.parseLong(((EditText)findViewById(R.id.secondsField)).getText().toString())*(1000l);
 
-            WifiManager wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
-            wifi.setWifiEnabled(false);
-            disableToggle.setChecked(true);
-            timer = new Timer(true);
-            timer.schedule(new DelayTimer(), timeInterval);
+            // set timer event
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() +
+                        timeInterval, pi);
+            } else {
+                am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() +
+                        timeInterval, pi);
+            }
+        } else {
+            turnWifiOn();
         }
+
     }
 
 
-    private class DelayTimer extends TimerTask {
 
-        @Override
-        public void run() {
-            WifiManager wifi = (WifiManager)getSystemService(Context.WIFI_SERVICE);
-            wifi.setWifiEnabled(true);
-            timer.cancel();
-            timer = null;
-            updateGUI();
-        }
-    }
 
 }

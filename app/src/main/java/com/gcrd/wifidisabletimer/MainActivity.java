@@ -96,7 +96,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     @Override
     public void onClick(View view) {
-        System.out.println("ONCLICK TRIGGERED!!!");
 
         // was the toggle off before the press?
         boolean off = ((ToggleButton) view).isChecked();

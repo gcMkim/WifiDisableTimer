@@ -1,4 +1,4 @@
-package com.sample.mkim.wifidisabletimer;
+package com.gcrd.wifidisabletimer;
 
 import android.app.Activity;
 import android.app.AlarmManager;
